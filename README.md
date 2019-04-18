@@ -1,4 +1,4 @@
-# template_repo README
+# geekathon-team-6 README
 
 ## What does this demonstrate?
 Please specify what is this demo about ...
