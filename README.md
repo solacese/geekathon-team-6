@@ -1,17 +1,26 @@
 # geekathon-team-6 README
 
 ## What does this demonstrate?
-Please specify what is this demo about ...
+This demonstrates the use of event-mesh for a use case for the US Army. The objective is to run the message brokers in a bandwidth constrained enviornment such as a war-zone. 
+
+For this demo, the "war-zones" were simulated by deploying a web-app and VMRs to multiple clouds. The "netem" command was used on the servers to limit bandwidth.
+
+![](architecture-diagram.png)
 
 ### Cloud Services Used
-List of cloud services uses in this demo if any ...
+The brokers were hosted in AWS, GCP and Azure. In addition, AWS Rekognition was used for the AI/ML features.
 
   
 ### Solace PubSub+ features used
 List of PubSub+ features used ...
 
+DMR
+RDP
+MQTT/Websockets
+
+
 **Try the live demo in action here:
-http://london.solace.com/cloud-analytics/machine-learning.html**
+
 
 ### Other Useful Links
 List of links to useful resources ...
