@@ -744,7 +744,11 @@ const constraints = {
                         platoon.numInfantry = json.numInfantry;
                         platoon.numTanks = json.numTanks;
 	 		platoon.numPlanes = json.numPlanes;
-			platoon.setLastUpdateTime();	
+	    		if(platoon.numInfantry == 0 && platoon.numTanks == 0 && platoon.numPlanes == 0) {
+	    			// Defeated
+	    		} else {
+				platoon.setLastUpdateTime();	
+	    		}
                 } else if(json.messageType == "PLATOON_MESSAGE") {
 			var platoon = platoons.get(json.id);
 			if(platoon != null) {

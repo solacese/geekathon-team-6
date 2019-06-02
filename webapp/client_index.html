@@ -8,7 +8,7 @@
 
 <body onload="init();">
 
-<div class="pure-control-group">
+<div id="connectStatus" class="pure-control-group">
 	<label class="largerLabel" id="connectionStatus" style="background-color:red; font-weight:bold; color:white;">Connecton: Down</label>
 	<!--img src="images/x.jpg" style="height:75;width:75px"-->
 	<input class="largerCheckbox" type="checkbox" id="stealth"></input>
@@ -20,14 +20,14 @@
 <p/>
 
 
-<div class="pure-control-group">
+<div id="connectDiv" class="pure-control-group">
             <label class="largerLabel" for="username">Name</label>
             <input class="largerTextbox" id="username"  type="text" placeholder="Name">
           <button class="largerButton" type="button" class="pure-button pure-button-primary" id="connect">Connect</button>
 </div>
 <p/>
 
-<div class="largerFont">
+<div id="displayDiv" class="largerFont">
 	<input class="largerCheckbox" type="checkbox" id="mapButton" name="mapButton" value="mapButton" checked> Map</input>
 	<input class="largerCheckbox" type="checkbox" id="messageButton" name="messageButton" value="messagesButton" checked> Messages</input>
 	<input class="largerCheckbox" type="checkbox" id="cameraButton" name="cameraButton" value="cameraButton" checked> Camera</input>
@@ -46,6 +46,12 @@
 	<label class="largerLabel" id=numTanks style="font-weight:bold"></label>
 	<img class="largerImage" src="images/plane.jpg">
 	<label class="largerLabel" id=numPlanes style="font-weight:bold"></label>
+</div>
+
+<div id="defeatedDiv" class="pure-control-group">
+	<label class="largerLabel" id="defeatedLabel" style="display: none; font-weight:bold; color:red;">DEFEATED</label>
+	<iframe class="largerVideo" id="defeatedVideo" style="display: none; overflow: hidden;" allow="accelerometer; autoplay; encrypted-media;"></iframe>
+	<!--iframe id="defeatedVideo" style="display: none; width: 360px; height: 360px;" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe-->
 </div>
 
 <p/>
@@ -110,6 +116,10 @@
 	}
 	div.largerFont {
 	}
+	iframe.largerVideo {
+		width: 360px;
+		height: 360px;
+	}
 	div.largerMap {
 		width: 400px;
 		height: 200px;
@@ -153,6 +163,10 @@
 	}
 	div.largerFont {
 		font-size:40px;
+	}
+	iframe.largerVideo {
+		width: 360px;
+		height: 360px;
 	}
 	div.largerMap {
 		width: 800px;
@@ -595,7 +609,7 @@ function init()
 
 		for(var i=0; i<numPlanes; i++) {
 			var roll = Math.floor((Math.random() * 6)) + 1;
-                       	if(roll <= 3) numHits++; 
+                       	if(roll <= 4) numHits++; 
 		}
 		console.log("Number of attack hits: " + numHits);
 		payload += ' "numHits":' + numHits + '}';
@@ -745,6 +759,7 @@ function init()
 
 	function sendLocation() {
 		if(inStealthMode) return;
+		if(defeated) return;
 
 		if(isConnected) {
 			var payload = '{ "messageType":"PLATOON_LOCATION",' +
@@ -1030,9 +1045,22 @@ function init()
 	}
 
 	function handleDefeated() {
+		sendStatus();
+
 		defeated = true;
 
 		// TODO:  Update display
+		document.getElementById("connectStatus").style.display = "none";
+		document.getElementById("connectDiv").style.display = "none";
+		document.getElementById("displayDiv").style.display = "none";
+		document.getElementById("location").style.display = "none";
+		document.getElementById("map_canvas").style.display = "none";
+		document.getElementById("message_section").style.display = "none";
+		document.getElementById("table").style.display = "none";
+		document.getElementById("camera").style.display = "none";
+		document.getElementById("defeatedLabel").style.display = "block";
+		document.getElementById("defeatedVideo").style.display = "block";
+		document.getElementById("defeatedVideo").src = "videos/defeatedVideo.mp4";
 	}
 
 	function handleAttackAndDefend(numHits) {
@@ -1058,6 +1086,7 @@ function init()
                         numHitsPending -= numPlanes;
                         numPlanes = 0;
                 }
+		updateUnitCounts();
 	}
 
 
