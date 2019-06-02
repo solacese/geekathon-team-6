@@ -1,0 +1,1145 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Platoon</title>
+</head>
+
+<!--meta name="viewport" content="width=device-width, initial-scale=1.0"/-->
+
+<body onload="init();">
+
+<div class="pure-control-group">
+	<label class="largerLabel" id="connectionStatus" style="background-color:red; font-weight:bold; color:white;">Connecton: Down</label>
+	<!--img src="images/x.jpg" style="height:75;width:75px"-->
+	<input class="largerCheckbox" type="checkbox" id="stealth"></input>
+	<label class="largerLabel">Stealth</label>
+	<!--input class="largerCheckbox" type="checkbox" id="clean" checked></input>
+	<label class="largerLabel">clean</label-->
+</div>	
+
+<p/>
+
+
+<div class="pure-control-group">
+            <label class="largerLabel" for="username">Name</label>
+            <input class="largerTextbox" id="username"  type="text" placeholder="Name">
+          <button class="largerButton" type="button" class="pure-button pure-button-primary" id="connect">Connect</button>
+</div>
+<p/>
+
+<div class="largerFont">
+	<input class="largerCheckbox" type="checkbox" id="mapButton" name="mapButton" value="mapButton" checked> Map</input>
+	<input class="largerCheckbox" type="checkbox" id="messageButton" name="messageButton" value="messagesButton" checked> Messages</input>
+	<input class="largerCheckbox" type="checkbox" id="cameraButton" name="cameraButton" value="cameraButton" checked> Camera</input>
+</div>
+
+<div>
+	<!--img class="largerImage" src="images/soldier.jpg" style="height:60;width:50px;">
+	<label class="largerLabel" id=numInfantry style="font-weight:bold"></label>
+	<img class="largerImage" src="images/tank.jpg" style="height:75px;width:90px">
+	<label class="largerLabel" id=numTanks style="font-weight:bold"></label>
+	<img class="largerImage" src="images/plane.jpg" style="height:75px;width:90px">
+	<label class="largerLabel" id=numPlanes style="font-weight:bold"></label-->
+	<img class="largerImage" src="images/soldier.jpg">
+	<label class="largerLabel" id=numInfantry style="font-weight:bold"></label>
+	<img class="largerImage" src="images/tank.jpg">
+	<label class="largerLabel" id=numTanks style="font-weight:bold"></label>
+	<img class="largerImage" src="images/plane.jpg">
+	<label class="largerLabel" id=numPlanes style="font-weight:bold"></label>
+</div>
+
+<p/>
+<label class="largerLabel" id="location">Location:</label>
+
+<div class="largerMap" id="map_canvas" style="border-right: 1px solid #666666; border-bottom: 1px solid #666666; border-top: 1px solid #AAAAAA; border-left: 1px solid #AAAAAA;"></div>
+
+<p/>
+
+<!--div id="message_section" style="width: 800px; height: 200px;"-->
+<div id="message_section">
+  <ul class="largerList" id="messages" style="overflow:auto; font-family:Arial; background-color:LightBlue; margin: 0; padding: 0; list-style-type: none; border-right: 1px solid #666666; border-bottom: 1px solid #666666; border-top: 1px solid #AAAAAA; border-left: 1px solid #AAAAAA;"></ul>
+  <p/>
+
+  <div class="pure-control-group" >
+	  <select class="largerDropDown" id="toList"><option value="command" selected="selected">HQ</option></select>
+	  <input class="largerTextbox" id="message" type="text" placeholder="Message" style="font-family:Arial; background-color:PowderBlue">
+          <button class="largerButton" type="button" id="send">Send</button>
+  </div>
+</div>
+
+<p/>
+<div class="largerTable" id="table"></div>
+
+<!-- Stream video via webcam -->
+    <!--video id="video" width="320" height="320" playsinline autoplay></video>
+    <canvas id="canvas" width="320" height="320"></canvas-->
+<div id="camera" class="video-wrap" style="width:800px; height:400px">
+    <video id="video" width="320" height="320" playsinline autoplay></video>
+    <canvas id="canvas" width="320" height="320"></canvas>
+    <p/>
+    <button class="largerButton" id="snap">Capture & Send</button>
+</div>
+
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBjRzb4wVw24uvFTSbP3bQ2Z3IjJqYNgq4" type="text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+<script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js"></script>
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.283.1.min.js"></script>
+
+<style type="text/css">
+
+	input.largerCheckbox {
+        	width: 20px;
+        	height: 20px;
+		font-size:20px;
+	}
+
+	input.largerTextbox {
+        	width: 300px;
+        	height: 20px;
+		font-size:20px;
+	}
+	button.largerButton {
+        	//width: 100px;
+        	//height: 50px;
+		//font-size:30px;
+	}
+	select.largerDropDown {
+	}
+	label.largerLabel {
+	}
+	div.largerFont {
+	}
+	div.largerMap {
+		width: 400px;
+		height: 200px;
+	}
+	ul.largerList {
+		width: 400px;
+		height: 150px;
+	}
+	div.largerTable {
+		width: 400px;
+		font-size:10px;
+	}
+	img.largerImage {
+		width: 50px;
+		height: 50px;
+	}
+
+@media only screen and (max-device-width: 480px) {
+	input.largerCheckbox {
+        	width: 50px;
+        	height: 50px;
+		font-size:40px;
+	}
+	input.largerTextbox {
+        	width: 500px;
+        	height: 60px;
+		font-size:40px;
+	}
+	button.largerButton {
+        	width: 175px;
+        	height: 75px;
+		font-size:30px;
+	}
+	select.largerDropDown {
+        	width: 150px;
+        	height: 75px;
+		font-size:30px;
+	}
+	label.largerLabel {
+		font-size:40px;
+	}
+	div.largerFont {
+		font-size:40px;
+	}
+	div.largerMap {
+		width: 800px;
+		height: 400px;
+	}
+	ul.largerList {
+		width: 800px;
+		height: 200px;
+	}
+	div.largerTable {
+		width: 800px;
+		font-size:20px;
+	}
+	img.largerImage {
+		width: 100px;
+		height: 100px;
+	}
+}
+</style>
+
+
+<script type="text/javascript">
+
+var broker = "UNKNOWN";
+var brokerPort = 7910;
+var vpn = "UNKNOWN";
+var clientusername = "UNKNOWN";
+var clientpassword = "UNKNOWN";
+var map = null;
+var markerCluster = null;
+var markers = [];
+var myMarker = null;
+var currentCoords = google.maps.LatLng(0.0, 0.0);
+var myId = "";
+var myName = "";
+var isConnected = false;
+var numInfantry = 25;
+var numTanks = 15;
+var numPlanes = 5;
+var neighbors = new Map();
+var inStealthMode = false;
+var defeated = false;
+let watchID;
+var s3 = null;
+var s3bucket = "geekfestteam6";
+var s3bucketRegion = 'us-east-1';
+var s3identityPoolId = 'us-east-1:6e69aede-262c-4bef-b299-ab0ac60d37df'
+var imageCount = 0;
+var locationAlertCount = 0;
+var lastLocationUpdate = 0;
+
+
+function init()
+    {
+
+	console.log("URL: " + window.location.host);
+        if(window.location.host == "client.chopper.mx") {
+        	broker = "dp55vmr1.chopper.mx";
+		vpn = "default";
+		clientusername = "default";
+		clientpassword = "default";
+        } else if(window.location.host == "clientaws.chopper.mx") {
+        	broker = "awsvmr01.chopper.mx";
+		vpn = "AWSVPN";
+		clientusername = "solaceaws";
+		clientpassword = "solace@123";
+        } else if(window.location.host == "clientgcp.chopper.mx") {
+                broker = "gcpvmr01.chopper.mx";
+		vpn = "GCPVPN";
+		clientusername = "solacegcp";
+		clientpassword = "solace@123";
+	} else if(window.location.host == "clientazure.chopper.mx") {
+        	broker = "azurevmr01.chopper.mx";
+		vpn = "AZUREVPN";
+		clientusername = "solaceazure";
+		clientpassword = "solace@123";
+        }
+
+	initMap();
+
+	updateUnitCounts();
+
+	refreshTable();
+
+	initWebCam();
+
+	initS3();
+
+	// Draw image
+	var context = canvas.getContext('2d');
+	snap.addEventListener("click", function() {
+		context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+		//console.log("w: " + video.videoWidth + " h: " + video.videoHeight);
+		//context.drawImage(video, 0, 0, 320, 240);
+		var data = context.getImageData(0,0, video.videoWidth, video.videoHeight);
+		sendImage(data);
+	});
+        document.getElementById("connect").addEventListener("click", connect);
+        document.getElementById("send").addEventListener("click", sendMessage);
+        document.getElementById("stealth").addEventListener("click", stealth);
+        document.getElementById("cameraButton").addEventListener("click", cameraButton);
+        document.getElementById("mapButton").addEventListener("click", mapButton);
+        document.getElementById("messageButton").addEventListener("click", messageButton);
+
+	window.setTimeout(tick, 1000);
+    }
+
+        class Neighbor {
+                constructor(id, name) {
+                        this._id = id;
+                        this._name = name;
+                        this._status = "UNKNOWN";
+                        this._numInfantry = numInfantry;
+                        this._numTanks = numTanks;
+                        this._numPlanes = numPlanes;
+                        this._lat = 0;
+                        this._lon = 0;
+			this._distance = -1;
+                        this._lastUpdateTime = Date.now() / 1000;
+                        this._lastMessage = "";
+                        this._image = null;
+			this._marker = null;
+			this._locationChanged = false;
+                }
+
+                updateMarker() {
+                        var coords = new google.maps.LatLng(this._lat, this._lon);
+			if(this.status == "STEALTH" || this.status == "MIA") {
+				if(this._marker != null) {
+					this._marker = null;
+					this._locationChanged = true;
+				}
+			} else if(this._marker == null) {
+				this._locationChanged = true;
+                                this._marker = new google.maps.Marker({
+                                        position: coords,
+                                        label: this._name
+                                	});
+                        } else {
+                               	this._marker.setPosition(coords);
+                               	this._marker.setLabel(this._name);
+                        }
+                }
+
+                get id() {
+                        return this._id;
+                }
+                get name() {
+                        return this._name;
+                }
+                get status() {
+                        return this._status;
+                }
+                get numInfantry() {
+                        return this._numInfantry;
+                }
+                get numTanks() {
+                        return this._numTanks;
+                }
+                get numPlanes() {
+                        return this._numPlanes;
+                }
+                get lat() {
+                        return this._lat;
+                }
+                get lon() {
+                        return this._lon;
+                }
+                get distance() {
+                        return this._distance;
+                }
+                get lastUpdateTime() {
+                        return this._lastUpdateTime;
+                }
+                get lastMessage() {
+                        return this._lastMessage;
+                }
+                get image() {
+                        return this._image;
+                }
+                get marker() {
+                        return this._marker;
+                }
+                get locationChanged() {
+                        return this._locationChanged;
+                }
+
+                set name(name) {
+               		if(this.name == name) return;
+                        this._name = name;
+                        // consider this a location changes so we update markers
+                        this._locationChanged = true;
+                        this.updateMarker(); 
+                }
+               	set status(status) {
+                        if(this._status == status) return;
+                        this._status = status;
+                        this.updateMarker();
+                } 
+                set numInfantry(numInfantry) {
+                        this._numInfantry = numInfantry;
+                }
+                set numTanks(numTanks) {
+                        this._numTanks = numTanks;
+                }
+                set numPlanes(numPlanes) {
+                        this._numPlanes = numPlanes;
+                }
+		setLocation(lat, lon) {
+                        if(this._lat == lat && this._lon == lon) return;
+                        this._locationChanged = true;
+                        this._lat = lat;
+                        this._lon = lon;
+                        this.updateMarker();
+                }
+                set distance(distance) {
+                        this._distance = distance;
+                }
+                set lastMessage(message) {
+                        this._lastMessage = message;
+                }
+                set image(image) {
+                        this._image = image;
+                }
+                set marker(marker) {
+                        this._marker = marker;
+                }
+                set locationChanged(locationChanged) {
+                        this._locationChanged = locationChanged;
+                }
+		setLastUpdateTime() {
+                        this._lastUpdateTime = this._lastUpdateTime = Date.now() / 1000;
+                }
+        }
+
+	function initS3() {
+
+		AWS.config.update({
+  			region: s3bucketRegion,
+			credentials: new AWS.CognitoIdentityCredentials({
+    				IdentityPoolId: s3identityPoolId
+  			})
+		});
+
+		s3 = new AWS.S3({
+  				apiVersion: '2006-03-01',
+  				params: {Bucket: s3bucket}
+		});
+	}
+
+     	function initMap() {
+           	// Prepare the map options
+           	var mapOptions = {
+                      zoom: 1.0,
+                      center: currentCoords,
+                      mapTypeControl: false,
+                      navigationControlOptions: {style: google.maps.NavigationControlStyle.SMALL},
+                      mapTypeId: google.maps.MapTypeId.ROADMAP
+            	};
+
+            	// Create the map, and place it in the map_canvas div
+            	map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+		myMarker = new google.maps.Marker({
+                                position: currentCoords,
+                                map: map,
+                                title: "Default Location"
+                        });
+                myMarker.setAnimation(google.maps.Animation.BOUNCE);
+
+		markerCluster = new MarkerClusterer(map, [],
+                        {imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m'});
+
+		if (navigator.geolocation) {
+         		//navigator.geolocation.getCurrentPosition( initMap, errorGettingLocation, 
+			//		{maximumAge: 30000, timeout: 10000, enableHighAccuracy: true} );
+                	const OPTIONS = {maximumAge: 30000, timeout: 10000, enableHighAccuracy: true};
+                	watchID = navigator.geolocation.watchPosition(
+                        	updateLocation,
+                        	errorGettingLocation,
+                        	OPTIONS
+                	);
+        	} else {
+              		alert("Sorry, but it looks like your browser does not support geolocation.");
+        	}
+
+        }
+
+	function stealth() {
+		if(inStealthMode) {
+			inStealthMode = false;
+		} else {
+			inStealthMode = true;
+		}
+	}
+
+        function refreshTable() {
+                //Build an array containing Customer records.
+                var headers = new Array();
+                headers.push("Name");
+                headers.push("Status");
+                headers.push("Infantry");
+                headers.push("Tanks");
+                headers.push("Planes");
+                headers.push("Dist.(m)");
+                headers.push("lat");
+                headers.push("lon");
+                //headers.push("Last update (s)");
+                //headers.push("Last Message");
+                headers.push("Last Image");
+                headers.push("Attack");
+
+                //Create a HTML Table element.
+                var table = document.createElement("TABLE");
+                table.border = "1";
+
+                //Get the count of columns.
+                var columnCount = headers.length;
+
+                //Add the header row.
+                var row = table.insertRow(-1);
+		row.style.backgroundColor = "black";
+                row.style.color = 'white';
+                for (var i = 0; i < columnCount; i++) {
+                        var headerCell = document.createElement("TH");
+                        headerCell.innerHTML = headers[i];
+                        row.appendChild(headerCell);
+                }
+
+		if(neighbors.size == 0) {
+                        row = table.insertRow(-1);
+			row.style.backgroundColor = "black";
+                	row.style.color = 'black';
+                	for (var i = 0; i < columnCount; i++) {
+                        	var cell = row.insertCell(-1);
+				cell.innerHTML = "-";
+			}
+		}
+                //Add the data rows.
+                for (var neighbor of neighbors.values()) {
+                        row = table.insertRow(-1);
+			row.style.fontWeight = 'bold';
+                        row.style.color = 'white';
+
+                        var cell;
+                        cell = row.insertCell(-1);
+                        cell.innerHTML = neighbor.name;
+                        cell = row.insertCell(-1);
+                        cell.innerHTML = neighbor.status;
+                        cell = row.insertCell(-1);
+                        cell.innerHTML = neighbor.numInfantry;
+                        cell = row.insertCell(-1);
+                        cell.innerHTML = neighbor.numTanks;
+                        cell = row.insertCell(-1);
+                        cell.innerHTML = neighbor.numPlanes;
+
+                        var distCell = row.insertCell(-1);
+                        distCell.innerHTML = Number(neighbor.distance).toFixed(0);
+                        var latCell = row.insertCell(-1);
+                        latCell.innerHTML = Number(neighbor.lat).toFixed(4);
+                        var lonCell = row.insertCell(-1);
+                        lonCell.innerHTML = Number(neighbor.lon).toFixed(4);
+
+
+                        //cell = row.insertCell(-1);
+                        //cell.innerHTML = Number((Date.now() / 1000) - neighbor.lastUpdateTime).toFixed(2);
+                        //cell = row.insertCell(-1);
+                        //cell.innerHTML = neighbor.lastMessage;
+
+                        cell = row.insertCell(-1);
+                        if(neighbor.image != null) {
+                                cell.appendChild(neighbor.image);
+                        }
+
+                        cell = row.insertCell(-1);
+			var attackButton = document.createElement('button');
+			attackButton.id = neighbor.id;
+			attackButton.innerHTML = "Attack";
+			attackButton.className = "largerButton";
+			//attackButton.style.width = "100px";
+			//attackButton.style.height = "50px";
+			if(neighbor.status != "ACTIVE" || inStealthMode) { 
+				attackButton.disabled = true;
+			}
+			attackButton.onclick = function() {attack(this)};
+			cell.append(attackButton);
+	
+
+			if(neighbor.status == "ACTIVE") {
+                                row.style.backgroundColor = "green";
+                        } else if(neighbor.status == "MIA") {
+                                row.style.backgroundColor = "orange";
+				distCell.style.color = "orange";
+				latCell.style.color = "orange";
+				lonCell.style.color = "orange";
+                        } else if(neighbor.status == "DEFEATED") {
+                                row.style.backgroundColor = "red";
+                        } else if(neighbor.status == "STEALTH") {
+                                row.style.backgroundColor = "grey";
+				distCell.style.color = "black";
+				distCell.style.backgroundColor = "black";
+				latCell.style.color = "black";
+				latCell.style.backgroundColor = "black";
+				lonCell.style.color = "black";
+				lonCell.style.backgroundColor = "black";
+                        } else {
+                                row.style.backgroundColor = "yellow";
+                        }
+                }
+
+                var dvTable = document.getElementById("table");
+                dvTable.innerHTML = "";
+                dvTable.appendChild(table);
+        }
+
+	function attack(neighborButton) {
+		console.log("Attacking " + neighborButton.id);
+		var payload = buildAttackMessage();
+		console.log("msg: " + payload);
+
+		var mqttMessage = new Paho.MQTT.Message(payload);
+                mqttMessage.destinationName = "ptp/" + neighborButton.id + "/attack";
+                client.send(mqttMessage);
+
+	}
+
+	function buildAttackMessage() {
+		var payload = '{ "messageType":"PLATOON_ATTACK",' +
+                                ' "from":"' + myId + '",';
+		var numHits = 0;
+
+		for(var i=0; i<numInfantry; i++) {
+			var roll = Math.floor((Math.random() * 6)) + 1;
+			if(roll <= 1) numHits++;
+		}
+
+		for(var i=0; i<numTanks; i++) {
+			var roll = Math.floor((Math.random() * 6)) + 1;
+			if(roll <= 3) numHits++;	
+		}
+
+		for(var i=0; i<numPlanes; i++) {
+			var roll = Math.floor((Math.random() * 6)) + 1;
+                       	if(roll <= 3) numHits++; 
+		}
+		console.log("Number of attack hits: " + numHits);
+		payload += ' "numHits":' + numHits + '}';
+		return payload;
+	}
+
+	function buildDefendMessage() {
+                var payload = '{ "messageType":"PLATOON_DEFEND",' +
+                                ' "from":"' + myId + '",';
+                var numHits = 0;
+
+                for(var i=0; i<numInfantry; i++) {
+                        var roll = Math.floor((Math.random() * 6)) + 1;
+                        if(roll <= 2) numHits++;
+                }
+
+                for(var i=0; i<numTanks; i++) {
+                        var roll = Math.floor((Math.random() * 6)) + 1;
+                        if(roll <= 2) numHits++;
+                }
+
+                for(var i=0; i<numPlanes; i++) {
+                        var roll = Math.floor((Math.random() * 6)) + 1;
+                        if(roll <= 4) numHits++;
+                }
+                console.log("Number of defend hits: " + numHits);
+                payload += ' "numHits":' + numHits + '}';
+                return payload;
+        }
+
+	function updateUnitCounts() {
+		document.getElementById("numInfantry").innerHTML = "x " + numInfantry;
+		document.getElementById("numTanks").innerHTML = "x " + numTanks;
+		document.getElementById("numPlanes").innerHTML = "x " + numPlanes;
+	}
+
+	function updateToList() {
+		var toList = document.getElementById("toList");
+		var selectedValue = toList.options[toList.selectedIndex].value;
+		while (toList.firstChild) {
+  			toList.removeChild(toList.firstChild);
+		}
+
+		var commandOption = document.createElement("option");
+		commandOption.label = "HQ";
+		commandOption.value = "command";
+		if(selectedValue == "command") {
+			commandOption.selected = true;
+		}
+		toList.appendChild(commandOption);
+                for (var neighbor of neighbors.values()) {
+			if(neighbor.status == "MIA") {
+				continue;
+			}
+			var option = document.createElement("option");
+			option.label = neighbor.name;
+			option.value = neighbor.id;
+			if(selectedValue == neighbor.id) {
+				option.selected = true;
+			}
+			toList.appendChild(option);
+		}
+	}
+
+	function tick() {
+		updateUnitCounts();
+		updateToList();
+		sendLocation();
+		sendStatus();
+		refreshMap();
+		refreshTable();
+		refreshLocation();
+		window.setTimeout(tick, 1000);
+	}
+
+	function refreshLocation() {
+		var locationStr = "Location (lat,lon) [t]: (" + 
+			Number(currentCoords.lat()).toFixed(8) + ", " + 
+			Number(currentCoords.lng()).toFixed(8) + ") [" +
+			Number((Date.now() / 1000) - lastLocationUpdate).toFixed(1) + "s]";
+		document.getElementById('location').innerHTML = locationStr;
+	}
+
+	function refreshMap() {
+		var refresh = false;
+                for (var neighbor of neighbors.values()) {
+			if(neighbor.locationChanged) {
+				refresh = true;
+				neighbor.locationChanged = false;
+			}
+		}
+
+		if(refresh) {
+			var newMarkers = [];
+                	for (var neighbor of neighbors.values()) {
+                        	if(neighbor.marker != null) {
+                                	newMarkers.push(neighbor.marker);
+                        	}
+                	}
+			
+			console.log("redrawing...");
+			markers = newMarkers;
+			markerCluster.clearMarkers();
+			markerCluster.addMarkers(markers);
+			markerCluster.redraw();
+		}
+		google.maps.event.trigger(map, 'resize');
+	}
+
+	function connect() {
+		if(isConnected) {
+			isConnected = false;
+			client.disconnect();
+		} else {
+			myName = document.getElementById('username').value;
+			if(myName == "") {
+				alert("Must provide username.");
+				return;
+			}
+			if(myId == "") {
+				myId = myName + Date.now();
+			}
+			var myWill = myName + "'s last will";
+			var payload = '{ "messageType":"PLATOON_WILL",' +
+                                '"id":"' + myId + '", ' +
+                                '"name":"' + myName + '", ' +
+				'"will":"' + myWill + '"}';
+                        var mqttWillMessage = new Paho.MQTT.Message(payload);
+                        mqttWillMessage.destinationName = "platoon/" + myId + "/will";
+
+			console.log("Connecting to: " + broker + " username: " + clientusername + " password: " + clientpassword);
+
+			// Create a client instance
+			client = new Paho.MQTT.Client(broker, brokerPort, myId);
+
+			// set callback handlers
+			client.onConnectionLost = onConnectionLost;
+			client.onMessageArrived = onMessageArrived;
+			client.connect({
+				onSuccess:onConnect,
+				useSSL:true, 
+				userName:clientusername, 
+				password:clientpassword,
+				willMessage:mqttWillMessage});
+		}
+	}
+
+	function sendLocation() {
+		if(inStealthMode) return;
+
+		if(isConnected) {
+			var payload = '{ "messageType":"PLATOON_LOCATION",' +
+				'"id":"' + myId + '", ' +
+				'"name":"' + myName + '", ' +
+				'"lat":"' + currentCoords.lat() + '", ' +
+				'"lon":"' + currentCoords.lng() + '"}';
+  			var mqttMessage = new Paho.MQTT.Message(payload);
+  			mqttMessage.destinationName = "platoon/" + myId + "/location";
+  			client.send(mqttMessage);
+		}
+	}
+
+	function sendMessage() {
+		if(isConnected) {
+			var message = document.getElementById('message').value;
+			if(message == "") return;
+			document.getElementById('message').value = "";
+			var toList = document.getElementById('toList');
+			var destId = toList.options[toList.selectedIndex].value;
+			var destName = toList.options[toList.selectedIndex].label;
+			var payload = '{ "messageType":"PLATOON_MESSAGE",' +
+                                '"id":"' + myId + '", ' +
+                                '"from":"' + myName + '", ' +
+                                '"message":"' + message + '"}';
+                        var mqttMessage = new Paho.MQTT.Message(payload);
+                        mqttMessage.destinationName = "ptp/" + destId + "/message";
+			mqttMessage.qos = 1;
+                        client.send(mqttMessage);
+
+			var msgList = document.getElementById('messages');
+                        var msg = document.createElement('li');
+                        msg.appendChild(document.createTextNode("To: " + destName + "> " + message));
+                        msgList.appendChild(msg);
+                        msgList.scrollTop = (msg.offsetTop - 50);
+
+			console.log("Message sent: " + message);
+		} else {
+			alert("Not connected");
+			return;
+		}
+	}
+
+	function sendImage(imageData) {
+		if(!isConnected) {
+			alert("Not connected");
+			return;
+		}
+		imageCount++;
+		var s3file = myId + "_" + imageCount + ".jpg";
+		var url = canvas.toDataURL('image/jpeg', 1.0);
+		var payload = '{ "messageType":"PLATOON_IMAGE",' +
+                                '"id":"' + myId + '", ' +
+                                '"name":"' + myName + '", ' +
+                                '"s3file":"' + s3file + '", ' +
+				'"lat":"' + currentCoords.lat() + '", ' +
+				'"lon":"' + currentCoords.lng() + '", ' +
+				'"image":"' + url + '"}';
+                var message = new Paho.MQTT.Message(payload);
+                message.destinationName = "platoon/" + myId + "/image";
+		message.qos = 1;
+                client.send(message);
+
+	    canvas.toBlob(function(blob) {
+		var params = {
+  			Body: blob,
+  			Bucket: s3bucket,
+  			Key: s3file
+ 		};
+
+		s3.putObject(params, function(err, data) {
+    			if (err) {
+      				console.log('There was an error uploading your photo: ', err.message);
+			} else {
+				var payload = '{ "messageType":"PLATOON_IMAGE_META_DATA",' +
+                                	'"id":"' + myId + '", ' +
+                                	'"name":"' + myName + '", ' +
+					'"lat":"' + currentCoords.lat() + '", ' +
+					'"lon":"' + currentCoords.lng() + '", ' +
+                                	'"s3file":"' + s3file + '"}';
+                		message = new Paho.MQTT.Message(payload);
+                		message.destinationName = "platoon/" + myId + "/imageMetaData";
+                		client.send(message);
+
+    				console.log('Successfully uploaded photo.');
+			}
+		})
+	     }, 'image/jpeg', 1);
+	}
+
+	function sendStatus() {
+		if(isConnected) {
+                        var payload = '{ "messageType":"PLATOON_STATUS",' +
+                                '"id":"' + myId + '", ' +
+                                '"name":"' + myName + '", ' +
+                                '"inStealthMode":"' + inStealthMode + '", ' +
+                                '"numInfantry":"' + numInfantry + '", ' +
+                                '"numTanks":"' + numTanks + '", ' +
+                                '"numPlanes":"' + numPlanes + '"}';
+                        var mqttMessage = new Paho.MQTT.Message(payload);
+                        mqttMessage.destinationName = "platoon/" + myId + "/status";
+                        client.send(mqttMessage);
+                }
+	}
+
+	function updateLocation(position) {
+       		currentCoords = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+		if(lastLocationUpdate == 0) {
+			map.setCenter(currentCoords);
+		}
+		lastLocationUpdate = Date.now() / 1000;
+
+            	// Place the initial marker
+		var myTitle = "My location (" + position.coords.latitude + ", " + position.coords.longitude + ")";
+        	myMarker.setPosition(currentCoords); 
+		myMarker.setTitle(myTitle);
+
+		refreshLocation();
+
+		// Refresh the map
+		google.maps.event.trigger(map, 'resize');
+
+	}
+
+	function errorGettingLocation(err) {
+		if(locationAlertCount == 0) {
+			alert("Cannot locate user:  " + err.message);
+		}
+		locationAlertCount++;
+	}	
+
+
+	function onConnect() {
+  		// Once a connection has been made, make a subscription and send a message.
+		isConnected = true;
+  		console.log("onConnect");
+		var options = {qos:1};
+  		client.subscribe("command/broadcast/message", options);
+  		client.subscribe("ptp/" + myId + "/message", options);
+  		client.subscribe("ptp/" + myId + "/attack", options);
+  		client.subscribe("ptp/" + myId + "/defend", options);
+  		client.subscribe("platoon/+/defeated", options);
+  		client.subscribe("ptp/" + myId + "/neighbor");
+
+		sendStatus();
+
+		var button = document.getElementById('connect');
+		button.innerText = "Disconnect";
+		var status = document.getElementById('connectionStatus');
+		status.innerText = "Connection: Up";
+		status.style.backgroundColor = "green";
+		status.style.fontWeight = "bold";
+		status.style.color = 'white'
+	}
+
+	// called when the client loses its connection
+	function onConnectionLost(responseObject) {
+		isConnected = false;
+  		if (responseObject.errorCode !== 0) {
+    			console.log("onConnectionLost:"+responseObject.errorMessage);
+  		}
+		var button = document.getElementById('connect');
+		button.innerText = "Connect";
+
+		var status = document.getElementById('connectionStatus');
+		status.innerText = "Connection: Down";
+		status.style.backgroundColor = "red";
+		status.style.fontWeight = "bold";
+		status.style.color = 'white'
+
+		neighbors.clear();
+	}
+
+	// called when a message arrives
+	function onMessageArrived(message) {
+		//console.log(message.payloadString);
+                var json = JSON.parse(message.payloadString);
+                if (json.messageType == "PLATOON_MESSAGE") {
+                        // get platoon from map, or create if it doesn't exist
+			var msgList = document.getElementById('messages');
+			var msg = document.createElement('li');
+			msg.appendChild(document.createTextNode("From: " + json.from + "> " + json.message));
+			msgList.appendChild(msg);
+			msgList.scrollTop = (msg.offsetTop - 50);
+		} else if(json.messageType == "PLATOON_ATTACK") {
+			console.log(message.payloadString);
+			if(defeated) return;
+
+			payload = buildDefendMessage();
+
+			handleAttackAndDefend(json.numHits);
+
+                	var mqttMessage = new Paho.MQTT.Message(payload);
+                	mqttMessage.destinationName = "ptp/" + json.from + "/defend";
+			console.log("Sending defend msg: " + payload + " to: " + mqttMessage.destinationName );
+                	client.send(mqttMessage);
+
+			if(numInfantry == 0 && numTanks == 0 && numPlanes == 0) {
+				console.log("Defeated by: " + json.from);
+				payload = '{ "messageType":"PLATOON_DEFEATED",' +
+                                	' "from":"' + myId + '",' +
+					' "by":"' + json.from + '"}';
+				var mqttMessage = new Paho.MQTT.Message(payload);
+                        	mqttMessage.destinationName = "platoon/" + myId + "/defeated";
+                        	client.send(mqttMessage);
+				handleDefeated();
+			}
+		} else if(json.messageType == "PLATOON_DEFEND") {
+			console.log(message.payloadString);
+			if(defeated) return;
+
+			handleAttackAndDefend(json.numHits);
+			if(numInfantry == 0 && numTanks == 0 && numPlanes == 0) {
+                                console.log("Defeated by: " + json.from);
+                                payload = '{ "messageType":"PLATOON_DEFEATED",' +
+                                        ' "from":"' + myId + '",' +
+                                        ' "by":"' + json.from + '"}';
+                                var mqttMessage = new Paho.MQTT.Message(payload);
+                                mqttMessage.destinationName = "platoon/" + myId + "/defeated";
+                                client.send(mqttMessage);
+				handleDefeated();
+                        }
+		} else if(json.messageType == "PLATOON_DEFEATED") {
+			console.log(message.payloadString);
+			if(defeated) return;
+
+			if(json.by == myId) {
+				if(numInfantry == 0 && numTanks == 0 && numPlanes == 0) return;
+				console.log("I defeated " + json.from + " adding 10 infantry, 5 tanks and 2 planes");
+				numInfantry += 10;
+				numTanks += 5;
+				numPlanes += 2;
+			}
+		} else if(json.messageType == "PLATOON_NEIGHBOR") {
+			var neighborChanges = false;
+			if(neighbors.size == json.neighbors.length) {
+				for(var i = 0; i < json.neighbors.length; i++) {
+					var obj = json.neighbors[i];
+					var neighbor = neighbors.get(obj.id);
+					if(neighbor == null) {
+						neighborsChanges = true;
+						break;
+					}
+				}
+			} else {
+				neighborChanges = true;
+			}
+
+			if(neighborChanges) {
+				neighbors.clear();
+			}
+			for(var i = 0; i < json.neighbors.length; i++) {
+				var obj = json.neighbors[i];
+				var neighbor = neighbors.get(obj.id);
+				if(neighbor == null) {
+					neighbor = new Neighbor(obj.id, obj.name);
+					neighbors.set(obj.id, neighbor);
+				}
+				neighbor.setLocation(obj.lat, obj.lon);
+				neighbor.distance = obj.distance;
+				neighbor.status = obj.status;
+				neighbor.numInfantry = obj.numInfantry;
+				neighbor.numTanks = obj.numTanks;
+				neighbor.numPlanes = obj.numPlanes;
+				
+		 		var neighborCanvas = document.createElement('canvas');
+                        	var neighborContext = neighborCanvas.getContext('2d');
+                        	var image = new Image();
+				if(obj.image != null && obj.image != "null") {
+                        		image.addEventListener('load', function() {
+                                		neighborCanvas.width = image.width;
+                                		neighborCanvas.height = image.height;
+                                		neighborContext.drawImage(image, 0, 0, neighborCanvas.width, neighborCanvas.height);
+                        		}, false);
+                        		image.src = obj.image;
+                                	neighbor.image = image;
+				}
+			}
+			//refreshTable();
+		} else {
+			console.log("Unexpected message: " + message.payloadString);
+		}
+	}
+
+	function handleDefeated() {
+		defeated = true;
+
+		// TODO:  Update display
+	}
+
+	function handleAttackAndDefend(numHits) {
+		numHitsPending = numHits;
+                if(numInfantry >=  numHitsPending) {
+                        numInfantry -= numHitsPending;
+                        numHitsPending = 0;
+                } else {
+                        numHitsPending -= numInfantry;
+                        numInfantry = 0;
+                }
+                if(numTanks >= numHitsPending) {
+                        numTanks -= numHitsPending;
+                        numHitsPending = 0;
+                } else {
+                        numHitsPending -= numTanks;
+                        numTanks = 0;
+                }
+                if(numPlanes >= numHitsPending) {
+                        numPlanes -= numHitsPending;
+                        numHitsPending = 0;
+                } else {
+                        numHitsPending -= numPlanes;
+                        numPlanes = 0;
+                }
+	}
+
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const snap = document.getElementById("snap");
+
+const constraints = {
+  audio: false,
+  video: {
+	width: 320, height: 320 //, facingMode: {exact: 'envrionment'}
+  }
+};
+
+        // Access webcam
+        async function initWebCam() {
+        try {
+                //if(navigator.getUserMedia) console.log("navigator.getUserMedia is available");
+                //if(navigator.webkitGetUserMedia) console.log("navigator.webkitGetUserMedia is available");
+                //if(navigator.msGetUserMedia) console.log("navigator.msGetUserMedia is available");
+                //if(navigator.mozGetUserMedia) console.log("navigator.mozGetUserMedia is available");
+                //if(navigator.mediaDevices.getUserMedia) console.log("navigator.mediaDevices.getUserMedia is available");
+                navigator.getUserMedia = (navigator.getUserMedia ||
+                            navigator.webkitGetUserMedia ||
+                            navigator.msGetUserMedia
+                            //navigator.mozGetUserMedia ||
+                );
+                if (navigator.getUserMedia) {
+                        console.log("getting user media");
+                        const stream = await navigator.getUserMedia(constraints, handleSuccess, handleError);
+                } else if(navigator.mediaDevices.getUserMedia) {
+                        const stream = await navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+                } else {
+                        console.log("getUserMedia not supported on this browser");
+                        alert("Sorry, but it looks like your browser does not support getUserMedia().");
+                }
+        } catch (e) {
+                console.log("Error initializing media: " + `navigator.getUserMedia error:${e.toString()}`);
+        }
+        }
+
+        // Success
+        function handleSuccess(stream) {
+                console.log("getUserMedia handleSuccess");
+                window.stream = stream;
+                video.setAttribute('autoplay', true);
+                video.setAttribute('playsinline', true);
+                video.setAttribute('exact', "environment");
+                //video.setAttribute('controls', true);
+                video.srcObject = stream;
+        }
+
+        function handleError(err) {
+                console.log("getUserMedia failed " + err.name);
+                alert("getUserMedia failed: " + err.name);
+        }
+
+
+	function cameraButton() {
+		toggleView("camera");
+	}
+
+	function messageButton() {
+		toggleView("message_section");
+	}
+
+	function mapButton() {
+		toggleView("map_canvas");
+		toggleView("location");
+	}
+
+	function toggleView(elementId) {
+		var x = document.getElementById(elementId);
+                if (x.style.display === "none") {
+                        x.style.display = "block";
+                } else {
+                        x.style.display = "none";
+                }
+        }
+
+
+</script>
+
+</body>
+</html>

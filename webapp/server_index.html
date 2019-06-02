@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Command and Control</title>
+  </head>
+  <body onload="init();">
+
+  	<div class="pure-control-group">
+        	<a id="connectionStatus" style="background-color:red; font-weight:bold; color:white;">Connecton: Down</a>
+        	<a id="passiveStatus" style="background-color:orange; font-weight:bold; color:white;">Status: Standby</a><br>
+	</div>
+
+	<div class="pure-control-group">
+            <button type="button" class="pure-button pure-button-primary" id="connect" style="height:50px;width:100px">Connect</button>
+	    <!--input class="largerCheckbox" type="checkbox" id="clean" checked></input>
+            <label class="largerLabel">Clean</label-->
+	</div>
+
+	<p/>
+	<div class="pure-control-group">
+		<label> Neighbor Proximity (meters): </label>
+    		<input id="proximity" type="text" style="height:25px;width:150px" value=100000000></input>
+	</div>
+
+	<div>
+        	<input type="checkbox" id="mapButton" name="mapButton" value="mapButton" checked> Map</input>
+        	<input type="checkbox" id="messageButton" name="messageButton" value="messagesButton" checked> Messages</input>
+        	<input type="checkbox" id="cameraButton" name="cameraButton" value="cameraButton" checked> Camera</input>
+	</div>
+
+
+    	<div id="map" style="width: 800px; height: 600px; border-right: 1px solid #666666; border-bottom: 1px solid #666666; border-top: 1px solid #AAAAAA; border-left: 1px solid #AAAAAA;"></div>
+
+    	<p/>
+
+
+	<div id="message_section" class="pure-control-group">
+    		<ul id="messages" style="width: 800px; height: 250px; overflow:auto; font-family:Arial; background-color:LightBlue; margin: 0; padding: 0; list-style-type: none;"></ul>
+		<select id="toList" style="width:60px; heigh:10px"><option value="all" selected="selected">ALL</option></select>
+           	<input id="message" type="text" placeholder="Message" style="height:25px;width:693px; font-family:Arial; background-color:PowderBlue""></input>
+           	<button type="button" class="pure-button pure-button-primary" id="send" style="height:50px;width:100px">Send Message</button>
+	</div>
+
+    	<div id="table"></div>
+
+<div id="camera" class="video-wrap">
+    <video id="video" width="320" height="320" playsinline autoplay></video>
+    <canvas id="canvas" width="320" height="320"></canvas>
+    <p/>
+    <button id="snap" style="height:50px;width:100px">Capture & Send</button>
+</div>
+
+    <script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js">
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBjRzb4wVw24uvFTSbP3bQ2Z3IjJqYNgq4&libraries=geometry">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+    <script src="lib/solclient-debug.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.283.1.min.js"></script>
+
+
+<script>
+
+var broker = "awsvmr01.chopper.mx";
+var brokerPort = 7910;
+var vpn = "AWSVPN";
+var clientusername = "solaceaws";
+var clientpassword = "solace@123";
+var myId;
+var isConnected = false;
+var currentCoords = google.maps.LatLng(0.0, 0.0);
+var map;
+var markerCluster;
+var markers = [];
+var tbl;
+var jsSession = null;
+var passiveServer = true;
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const snap = document.getElementById("snap");
+var s3 = null;
+var s3bucket = "geekfestteam6";
+var s3bucketRegion = 'us-east-1';
+var s3identityPoolId = 'us-east-1:6e69aede-262c-4bef-b299-ab0ac60d37df'
+var imageCount = 0;
+var locationAlertCount = 0;
+
+const constraints = {
+  audio: false,
+  video: {
+    width: 320, height: 320
+  }
+};
+
+
+	function init() {
+		myId = "HQ" + Date.now();;
+
+		initS3();
+
+		initWebCam();
+
+		initMap();
+
+                window.setTimeout(tick, 1000);
+
+                document.getElementById("connect").addEventListener("click", connect);
+                document.getElementById("send").addEventListener("click", sendMessage);
+		document.getElementById("cameraButton").addEventListener("click", cameraButton);
+        	document.getElementById("mapButton").addEventListener("click", mapButton);
+        	document.getElementById("messageButton").addEventListener("click", messageButton);
+
+
+		var context = canvas.getContext('2d');
+        	snap.addEventListener("click", function() {
+                	context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+                	var data = context.getImageData(0,0, video.videoWidth, video.videoHeight);
+                	sendImage(data);
+        	});
+	}
+
+	// Access webcam
+	async function initWebCam() {
+  	try {
+        	//if(navigator.getUserMedia) console.log("navigator.getUserMedia is available");
+        	//if(navigator.webkitGetUserMedia) console.log("navigator.webkitGetUserMedia is available");
+        	//if(navigator.msGetUserMedia) console.log("navigator.msGetUserMedia is available");
+        	//if(navigator.mozGetUserMedia) console.log("navigator.mozGetUserMedia is available");
+        	//if(navigator.mediaDevices.getUserMedia) console.log("navigator.mediaDevices.getUserMedia is available");
+    		navigator.getUserMedia = (navigator.getUserMedia ||
+                            navigator.webkitGetUserMedia ||
+                            navigator.msGetUserMedia
+                            //navigator.mozGetUserMedia ||
+                );
+    		if (navigator.getUserMedia) {
+        		console.log("getting user media");
+        		const stream = await navigator.getUserMedia(constraints, handleSuccess, handleError);
+    		} else if(navigator.mediaDevices.getUserMedia) {
+        		const stream = await navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+    		} else {
+        		console.log("getUserMedia not supported on this browser");
+        		alert("Sorry, but it looks like your browser does not support getUserMedia().");
+    		}
+  	} catch (e) {
+          	console.log("Error initializing media: " + `navigator.getUserMedia error:${e.toString()}`);
+  	}
+	}
+
+        // Success
+        function handleSuccess(stream) {
+                console.log("getUserMedia handleSuccess");
+                window.stream = stream;
+                video.setAttribute('autoplay', true);
+                video.setAttribute('playsinline', true);
+                //video.setAttribute('controls', true);
+                video.srcObject = stream;
+        }
+
+        function handleError(err) {
+                console.log("getUserMedia failed " + err.name);
+                alert("getUserMedia failed: " + err.name);
+        }
+
+        function initS3() {
+
+                AWS.config.update({
+                        region: s3bucketRegion,
+                        credentials: new AWS.CognitoIdentityCredentials({
+                                IdentityPoolId: s3identityPoolId
+                        })
+                });
+
+                s3 = new AWS.S3({
+                                apiVersion: '2006-03-01',
+                                params: {Bucket: s3bucket}
+                });
+        }
+
+
+      function initMap() {
+	      	// Prepare the map options
+                var mapOptions = {
+                      zoom: 1.64,
+                      center: currentCoords,
+                      mapTypeControl: false,
+                      navigationControlOptions: {style: google.maps.NavigationControlStyle.SMALL},
+                      mapTypeId: google.maps.MapTypeId.ROADMAP
+                };
+
+                // Create the map, and place it in the map_canvas div
+                map = new google.maps.Map(document.getElementById("map"), mapOptions);
+
+	      	// Place the initial marker
+                myMarker = new google.maps.Marker({
+                      position: currentCoords,
+                      map: map,
+                      title: "My Default Location"
+                });
+                myMarker.setAnimation(google.maps.Animation.BOUNCE);
+
+		markerCluster = new MarkerClusterer(map, [],
+                        {imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m'});
+
+		if (navigator.geolocation) {
+                	navigator.geolocation.getCurrentPosition( locationCallback, errorGettingLocation, {maximumAge: 30000, timeout: 10000, enableHighAccuracy: true} );
+        	} else {
+              		alert("Sorry, but it looks like your browser does not support geolocation.");
+        	}
+
+      }
+
+	function locationCallback(position) {
+                // Define the coordinates as a Google Maps LatLng Object
+                currentCoords = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+		map.setCenter(currentCoords);
+
+		myMarker.setAnimation(google.maps.Animation.BOUNCE);
+		myMarker.setPosition(currentCoords);
+                myMarker.setTitle("My Location");
+
+		markerCluster = new MarkerClusterer(map, [],
+                        {imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m'});
+	}
+
+        function errorGettingLocation(err) {
+                if(locationAlertCount == 0) {
+                        alert("Cannot locate user:  " + err.message);
+                }
+                locationAlertCount++;
+
+                console.log("Cannot locate user: " + err.message + " count: " + locationAlertCount);
+        }
+
+
+	var platoons = new Map();
+	class Platoon {
+		constructor(id, name) {
+			this._id = id;
+			this._name = name;
+			this._lat = 0;
+			this._lon = 0;
+			this._lastUpdateTime = Date.now() / 1000;
+			this._lastMessage = "";
+			this._imageCanvas = null;
+			this._marker = null;
+			this._status = "UNKNOWN";
+			this._numInfantry = 0
+			this._numTanks = 0
+			this._numPlanes = 0
+			this._inStealthMode = false;
+			this._locationChanged = false;
+			this._will = "";
+		}
+
+		updateMarker() {
+			var coords = new google.maps.LatLng(this._lat, this._lon);
+			if(this._inStealthMode || this._status == "MIA") {
+				if(this._marker != null) {
+                                        this._marker = null;
+                                        this._locationChanged = true;
+                                }
+			} else if(this._marker == null) {
+				this._locationChanged = true;
+				this._marker = new google.maps.Marker({
+                      			position: coords,
+                      			label: this._name
+                		});
+			} else {
+                		this._marker.setPosition(coords);
+                		this._marker.setLabel(this._name);
+			}
+		}
+
+		get id() {
+			return this._id;
+		}
+		get name() {
+			return this._name;
+		}
+		get lat() {
+			return this._lat;
+		}
+		get lon() {
+			return this._lon;
+		}
+		get lastUpdateTime() {
+			return this._lastUpdateTime;
+		}
+		get lastMessage() {
+			return this._lastMessage;
+		}
+		get imageCanvas() {
+			return this._imageCanvas;
+		}
+		get marker() {
+			return this._marker;
+		}
+		get locationChanged() {
+                        return this._locationChanged;
+                }
+		get status() {
+			return this._status;
+		}
+		get numInfantry() {
+			return this._numInfantry;
+		}
+		get numTanks() {
+			return this._numTanks;
+		}
+		get numPlanes() {
+			return this._numPlanes;
+		}
+		get inStealthMode() {
+			return this._inStealthMode;
+		}
+		get will() {
+			return this._will;
+		}
+
+		set name(name) {
+			if(this.name == name) return;
+			this._name = name;
+			// consider this a location changes so we update markers
+			this._locationChanged = true;
+			this.updateMarker();
+		}
+		setLocation(lat, lon) {
+			if(this._lat == lat && this._lon == lon) return;
+                        this._locationChanged = true;
+			this._lat = lat;
+			this._lon = lon;
+			this.updateMarker();
+		}
+		set lastMessage(message) {
+			this._lastMessage = message;
+		}
+		set imageCanvas(canvas) {
+			this._imageCanvas = canvas;
+		}
+		set status(status) {
+			if(this._status == status) return;
+			this._status = status;
+			this.updateMarker();
+		}
+		set numInfantry(numInfantry) {
+			this._numInfantry = numInfantry;
+		}
+		set numTanks(numTanks) {
+			this._numTanks = numTanks;
+		}
+		set numPlanes(numPlanes) {
+			this._numPlanes = numPlanes;
+		}
+		set inStealthMode(inStealthMode) {
+			if(this._inStealthMode == inStealthMode) return;
+			this._inStealthMode = inStealthMode;
+			this.updateMarker();
+		}
+		set locationChanged(locationChanged) {
+                        this._locationChanged = locationChanged;
+                }
+		setLastUpdateTime() {
+			this._lastUpdateTime = this._lastUpdateTime = Date.now() / 1000;
+			this._will = "";
+		}
+		set will(will) {
+			this._will = will;
+		}
+
+	}
+
+	function tick() {
+		updatePlatoonStatus();
+		updateToList();
+		notifyNeiboringPlatoons();
+		refreshTable();
+		refreshMap();
+
+        	window.setTimeout(tick, 1000);
+	}
+
+	function updatePlatoonStatus() {
+		var currentTime = Date.now() / 1000;
+	 	for (var platoon of platoons.values()) {
+			if(platoon.numInfantry == 0 && platoon.numTanks == 0 && platoon.numPlanes == 0) {
+				platoon.status = "DEFEATED";
+				continue;
+			}
+			if(platoon.inStealthMode) {
+				platoon.status = "STEALTH";
+				continue;
+			}
+			if(platoon.will != "") {
+				platoon.status = "MIA";
+				continue;
+			}
+
+			if(currentTime - platoon.lastUpdateTime < 10) {
+	 			platoon.status = "ACTIVE";
+	 		} else if(currentTime - platoon.lastUpdateTime < 1000) {
+				platoon.status = "MIA";
+	 		} else {
+	 			platoons.delete(platoon.id);
+			}
+		}
+	}
+
+	function refreshMap() {
+		var refresh = false;
+                for (var platoon of platoons.values()) {
+                        if(platoon.locationChanged) {
+                                refresh = true;
+                                platoon.locationChanged = false;
+                        }
+                }
+
+                if(refresh) {
+                        var newMarkers = [];
+                        for (var platoon of platoons.values()) {
+                                if(platoon.marker != null) {
+                                        newMarkers.push(platoon.marker);
+                                }
+                        }
+
+                        console.log("redrawing...");
+                        markers = newMarkers;
+                        markerCluster.clearMarkers();
+                        markerCluster.addMarkers(markers);
+                        markerCluster.redraw();
+                }
+
+                // Refresh the map
+                google.maps.event.trigger(map, 'resize');
+	}
+
+	function refreshTable() {
+		//Build an array containing Customer records.
+	        var headers = new Array();
+		headers.push("ID");
+		headers.push("Name");
+		headers.push("Status");
+		headers.push("Infantry");
+		headers.push("Tanks");
+		headers.push("Planes");
+		headers.push("lat");
+		headers.push("lon");
+		headers.push("Last update (s)");
+		headers.push("Last Message");
+		headers.push("Last Image");
+ 
+        	//Create a HTML Table element.
+        	var table = document.createElement("TABLE");
+        	table.border = "1";
+ 
+        	//Get the count of columns.
+        	var columnCount = headers.length;
+ 
+        	//Add the header row.
+        	var row = table.insertRow(-1);
+		row.style.backgroundColor = "black";
+		row.style.color = 'white';
+        	for (var i = 0; i < columnCount; i++) {
+            		var headerCell = document.createElement("TH");
+            		headerCell.innerHTML = headers[i];
+            		row.appendChild(headerCell);
+        	}
+
+		if(platoons.size == 0) {
+                        row = table.insertRow(-1);
+                        row.style.backgroundColor = "black";
+                        row.style.color = 'black';
+                        for (var i = 0; i < columnCount; i++) {
+                                var cell = row.insertCell(-1);
+                                cell.innerHTML = "-";
+                        }
+                }
+ 
+        	//Add the data rows.
+	 	for (var platoon of platoons.values()) {
+            		row = table.insertRow(-1);
+			row.style.fontWeight = 'bold';
+			row.style.color = 'white';
+
+               	 	var cell;
+	 		cell = row.insertCell(-1);
+                	cell.innerHTML = platoon.id;
+	 		cell = row.insertCell(-1);
+                	cell.innerHTML = platoon.name;
+	 		cell = row.insertCell(-1);
+                	cell.innerHTML = platoon.status;
+	 		cell = row.insertCell(-1);
+                	cell.innerHTML = platoon.numInfantry;
+	 		cell = row.insertCell(-1);
+                	cell.innerHTML = platoon.numTanks;
+	 		cell = row.insertCell(-1);
+                	cell.innerHTML = platoon.numPlanes;
+
+                        var latCell = row.insertCell(-1);
+                        latCell.innerHTML = Number(platoon.lat).toFixed(4);
+                        var lonCell = row.insertCell(-1);
+                        lonCell.innerHTML = Number(platoon.lon).toFixed(4);
+
+	 		cell = row.insertCell(-1);
+                	cell.innerHTML = Number((Date.now() / 1000) - platoon.lastUpdateTime).toFixed(2);
+	 		cell = row.insertCell(-1);
+			if(platoon.will != "") {
+                		cell.innerHTML = platoon.will;
+			} else {	
+                		cell.innerHTML = platoon.lastMessage;
+			}
+	 		cell = row.insertCell(-1);
+			if(platoon.imageCanvas != null) {
+				cell.appendChild(platoon.imageCanvas);
+			}
+
+	 		if(platoon.status == "ACTIVE") {
+                                row.style.backgroundColor = "green";
+                        } else if(platoon.status == "MIA") {
+                                row.style.backgroundColor = "orange";
+                        } else if(platoon.status == "DEFEATED") {
+                                row.style.backgroundColor = "red";
+                        } else if(platoon.status == "STEALTH") {
+                                row.style.backgroundColor = "grey";
+                                latCell.style.color = "black";
+                                latCell.style.backgroundColor = "black";
+                                lonCell.style.color = "black";
+                                lonCell.style.backgroundColor = "black";
+                        } else {
+                                row.style.backgroundColor = "yellow";
+                        }
+
+        	}
+ 
+        	var dvTable = document.getElementById("table");
+        	dvTable.innerHTML = "";
+        	dvTable.appendChild(table);		
+	}
+
+        function updateToList() {
+                var toList = document.getElementById("toList");
+                var selectedValue = toList.options[toList.selectedIndex].value;
+                while (toList.firstChild) {
+                        toList.removeChild(toList.firstChild);
+                }
+
+                var commandOption = document.createElement("option");
+                commandOption.label = "ALL";
+                commandOption.value = "all";
+                if(selectedValue == "all") {
+                        commandOption.selected = true;
+                }
+                toList.appendChild(commandOption);
+                for (var platoon of platoons.values()) {
+                        if(platoon.status == "MIA") {
+                                continue;
+                        }
+                        var option = document.createElement("option");
+                        option.label = platoon.name;
+                        option.value = platoon.id;
+                        if(selectedValue == platoon.id) {
+                                option.selected = true;
+                        }
+                        toList.appendChild(option);
+                }
+        }
+
+
+	function connect() {
+
+		if(isConnected) {
+                        disconnectMqtt();
+			disconnectJS();
+                } else {
+			connectMqtt();
+			connectJS();
+
+                }
+	}
+
+	function connectMqtt() {
+                // Create a client instance
+                client = new Paho.MQTT.Client(broker, brokerPort, "");
+
+                // set callback handlers
+                client.onConnectionLost = onConnectionLost;
+                client.onMessageArrived = onMessageArrived;
+		//console.log("Checked: " + document.getElementById("clean").checked);
+                client.connect({
+	    		onSuccess:onConnect,
+	    		useSSL:true, 
+	    		userName:clientusername, 
+	    		password:clientpassword});
+	}
+
+	function disconnectMqtt() {
+		client.disconnect();
+	}
+
+	function connectJS() {
+		var factoryProps = new solace.SolclientFactoryProperties();
+		factoryProps.profile = solace.SolclientFactoryProfiles.version10;
+		solace.SolclientFactory.init(factoryProps);
+		solace.SolclientFactory.setLogLevel(solace.LogLevel.INFO);
+
+		// create session
+        	try {
+	  		var myUrl = "wss://" + broker + ":443";
+	    		console.log("Connecting to: " + myUrl + " vpn: " + vpn +  " username: " + clientusername + " password: " + clientpassword);
+            		jsSession = solace.SolclientFactory.createSession({
+                	// solace.SessionProperties
+                	url:      myUrl,
+                	vpnName:  vpn,
+                	userName: clientusername,
+                	password: clientpassword,
+			authenticationScheme: solace.AuthenticationScheme.BASIC,
+	    		connectRetries: 0,
+	    		reconnectRetries: 0,
+            		});
+
+	  		jsSession.on(solace.SessionEventCode.UP_NOTICE, function (sessionEvent) {
+    				console.log('=== Successfully connected and ready to send messages. ===');
+    				onJsConnect();
+			});
+
+			jsSession.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, function (sessionEvent) {
+    				console.log('Connection failed to the message router: ' + sessionEvent.infoStr +
+        				' - check correct parameter values and connectivity!');
+			});
+
+			jsSession.on(solace.SessionEventCode.DISCONNECTED, function (sessionEvent) {
+    				console.log('Disconnected.');
+			});
+
+	  		jsSession.connect();
+        	} catch (error) {
+            		console.log("Error creating JS connection" + error);
+		}
+	}
+
+	function disconnectJS() {
+		jsSession.disconnect();
+	}
+
+	function onJsConnect() {
+		var queueName = "semaphorequeue";
+		const messageConsumer = jsSession.createMessageConsumer({
+            		queueDescriptor: { name: queueName, type: solace.QueueType.QUEUE },
+            		acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT,
+            		activeIndicationEnabled: true,
+        	});
+        
+        	messageConsumer.on(solace.MessageConsumerEventName.ACTIVE, function () {
+            		console.log('=== ' + ': received ACTIVE event - Ready to receive messages');
+
+			passiveServer = false;
+	  		var status = document.getElementById('passiveStatus');
+                	status.innerText = "Status: Primary";
+                	status.style.backgroundColor = "green";
+                	status.style.fontWeight = "bold";
+                	status.style.color = 'white'
+
+        	});
+        	messageConsumer.on(solace.MessageConsumerEventName.INACTIVE, function () {
+            		console.log('=== ' + ': received INACTIVE event');
+
+			passiveServer = true;
+	  		var status = document.getElementById('passiveStatus');
+                        status.innerText = "Status: Standby";
+                        status.style.backgroundColor = "orange";
+                        status.style.fontWeight = "bold";
+                        status.style.color = 'white'
+        	});
+
+		messageConsumer.connect();
+	}
+
+	// called when the client connects
+	function onConnect() {
+		  // Once a connection has been made, make a subscription and send a message.
+	 	isConnected = true;
+  		console.log("onConnect");
+		var options = {qos:1};
+  		client.subscribe("platoon/+/will", options);
+  		client.subscribe("platoon/+/image", options);
+  		client.subscribe("platoon/+/location");
+  		client.subscribe("platoon/+/status");
+  		client.subscribe("ptp/command/message", options);
+
+	 	var button = document.getElementById('connect');
+                button.innerText = "Disconnect";
+
+	 	var status = document.getElementById('connectionStatus');
+                status.innerText = "Connection: Up";
+                status.style.backgroundColor = "green";
+	 	status.style.fontWeight = "bold";
+                status.style.color = 'white'
+
+	}
+
+	// called when the client loses its connection
+	function onConnectionLost(responseObject) {
+	 	isConnected = false;
+  		if (responseObject.errorCode !== 0) {
+    		console.log("onConnectionLost:"+responseObject.errorMessage);
+  		}
+
+		var button = document.getElementById('connect');
+                button.innerText = "Connect";
+
+	 	var status = document.getElementById('connectionStatus');
+	        status.innerText = "Connection: Down";
+	        status.style.backgroundColor = "red";
+	 	status.style.fontWeight = "bold";
+                status.style.color = 'white'
+	}
+
+	// called when a message arrives
+	function onMessageArrived(message) {
+		var json = JSON.parse(message.payloadString);
+		if (json.messageType == "PLATOON_LOCATION") {
+			// get platoon from map, or create if it doesn't exist
+			var platoon = platoons.get(json.id);
+			if(platoon == null) {
+				console.log("New platoon: " + json.name);
+				platoon = new Platoon(json.id, json.name);
+				platoons.set(json.id, platoon);
+			} 
+			platoon.name = json.name;
+			platoon.setLocation(json.lat, json.lon);
+			platoon.setLastUpdateTime();	
+		} else if (json.messageType == "PLATOON_STATUS") {
+                        // get platoon from map, or create if it doesn't exist
+                        var platoon = platoons.get(json.id);
+                        if(platoon == null) {
+                                console.log("New platoon: " + json.name);
+                                platoon = new Platoon(json.id, json.name);
+                                platoons.set(json.id, platoon);
+                        } 
+                        platoon.name = json.name;
+			platoon.inStealthMode = (json.inStealthMode == "true");
+                        platoon.numInfantry = json.numInfantry;
+                        platoon.numTanks = json.numTanks;
+	 		platoon.numPlanes = json.numPlanes;
+			platoon.setLastUpdateTime();	
+                } else if(json.messageType == "PLATOON_MESSAGE") {
+			var platoon = platoons.get(json.id);
+			if(platoon != null) {
+				platoon.lastMessage = json.message;
+			}
+
+			var msgList = document.getElementById('messages');
+                        var msg = document.createElement('li');
+			msg.appendChild(document.createTextNode("From: " + json.from + "> " + json.message));
+                        msgList.appendChild(msg);
+                        msgList.scrollTop = (msg.offsetTop - 50);
+		} else if(json.messageType == "PLATOON_IMAGE") {
+			console.log("image received");
+			var platoon = platoons.get(json.id);
+                        if(platoon == null) {
+                                console.log("New platoon: " + json.name);
+                                platoon = new Platoon(json.id, json.name);
+                                platoons.set(json.id, platoon);
+                        } 
+			var canvas = document.createElement('canvas'),
+        		context = canvas.getContext('2d'),
+        		image = new Image();
+    			image.addEventListener('load', function() {
+      				canvas.width = image.width/4;
+      				canvas.height = image.height/4;
+      				context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      				//var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+			  	platoon.imageCanvas = canvas;
+    			}, false);
+    			image.src = json.image;
+		} else if(json.messageType == "PLATOON_WILL") {
+                        console.log("will received received for " + json.name);
+                        var platoon = platoons.get(json.id);
+                        if(platoon == null) {
+                                console.log("Platoon not found: " + json.name);
+                                return;
+                        }
+                        platoon.will = json.will; 
+                } else {
+  			console.log("Unexpected message: "+message.payloadString);
+		}
+	}
+
+        function sendMessage() {
+                if(isConnected) {
+                        var message = document.getElementById('message').value;
+			if(message == "") return;
+			document.getElementById('message').value = "";
+
+	  		var toList = document.getElementById('toList');
+                        var destId = toList.options[toList.selectedIndex].value;
+                        var destName = toList.options[toList.selectedIndex].label;
+
+                        var payload = '{ "messageType":"PLATOON_MESSAGE",' +
+				' "from":"HQ",' +
+                                '"message":"' + message + '"}';
+                        var mqttMessage = new Paho.MQTT.Message(payload);
+	  		if(destId == "all") {
+                        	mqttMessage.destinationName = "command/" + "broadcast" + "/message";
+	  		} else {
+                        	mqttMessage.destinationName = "ptp/" + destId + "/message"
+	  		}
+			mqttMessage.qos = 1;
+                        client.send(mqttMessage);
+
+			var msgList = document.getElementById('messages');
+                        var msg = document.createElement('li');
+                        msg.appendChild(document.createTextNode("To: " + destName + "> " + message));
+                        msgList.appendChild(msg);
+                        msgList.scrollTop = (msg.offsetTop - 50);
+
+                        console.log("Message sent: " + message);
+                } else {
+                        alert("Not connected");
+                        return;
+                }
+        }
+
+        function sendImage(imageData) {
+                if(!isConnected) {
+                        alert("Not connected");
+                        return;
+                }
+                imageCount++;
+                var s3file = myId + "_" + imageCount + ".jpg";
+                var url = canvas.toDataURL('image/jpeg', 1.0);
+                var payload = '{ "messageType":"HQ_IMAGE",' +
+                                '"id":"' + myId + '", ' +
+                                //'"name":"' + myName + '", ' +
+                                '"s3file":"' + s3file + '", ' +
+                                '"lat":"' + currentCoords.lat() + '", ' +
+                                '"lon":"' + currentCoords.lng() + '", ' +
+                                '"image":"' + url + '"}';
+                message = new Paho.MQTT.Message(payload);
+                message.destinationName = "hq/" + myId + "/image";
+		message.qos = 1;
+                client.send(message);
+
+            canvas.toBlob(function(blob) {
+                var params = {
+                        Body: blob,
+                        Bucket: s3bucket,
+                        Key: s3file
+                };
+
+                s3.putObject(params, function(err, data) {
+                        if (err) {
+                                console.log('There was an error uploading your photo: ', err.message);
+                        } else {
+                                var payload = '{ "messageType":"HQ_IMAGE_META_DATA",' +
+                                        '"id":"' + myId + '", ' +
+                                        '"lat":"' + currentCoords.lat() + '", ' +
+                                        '"lon":"' + currentCoords.lng() + '", ' +
+                                        '"s3file":"' + s3file + '"}';
+                                message = new Paho.MQTT.Message(payload);
+                                message.destinationName = "hq/" + myId + "/imageMetaData";
+				message.qos = 1;
+                                client.send(message);
+
+                                console.log('Successfully uploaded photo.');
+                        }
+                })
+             }, 'image/jpeg', 1);
+        }
+
+
+	function notifyNeiboringPlatoons() {
+	 	if((!isConnected) || (passiveServer)) {
+	 		return;
+	 	}
+		for (var platoon of platoons.values()) {
+			var payload = '{ "messageType":"PLATOON_NEIGHBOR",' +
+                               	' "from":"command",' +
+                               	' "neighbors": [';
+			var numNeighbors = 0;
+			for (var neighbor of platoons.values()) {
+				if(platoon.id == neighbor.id) {
+					continue;
+				}
+				var distance = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(platoon.lat, platoon.lon), new google.maps.LatLng(neighbor.lat, neighbor.lon));  
+				var proximity = document.getElementById("proximity").value;
+				if(distance > parseFloat(proximity)) {
+					continue;
+				}
+				numNeighbors++;
+				//console.log("Distance between " + platoon.name + " and " + neighbor.name + " is " + distance + " meters, proximity is " + proximity);
+				var imageURL = null;
+				if(neighbor.imageCanvas != null) {
+					imageURL =  neighbor.imageCanvas.toDataURL('image/jpeg', 1.0);
+				}
+				if(numNeighbors > 1) {
+					payload += ',';
+				}
+				payload += 
+					' { "id":"' + neighbor.id + '",' +
+                                	' "name":"' + neighbor.name + '",' +
+                                	' "status":"' + neighbor.status + '",' +
+                                	' "numInfantry":"' + neighbor.numInfantry + '",' +
+                                	' "numTanks":"' + neighbor.numTanks + '",' +
+                                	' "numPlanes":"' + neighbor.numPlanes + '",' +
+                                	' "distance":"' + distance + '",' +
+                                	' "lat":"' + neighbor.lat + '",' +
+                                	' "lon":"' + neighbor.lon + '",' +
+                                	'"image":"' + imageURL + '"}';
+			}
+			payload += ']}';
+                       	message = new Paho.MQTT.Message(payload);
+                       	message.destinationName = "ptp/" + platoon.id + "/neighbor";
+                       	client.send(message);
+		} 
+	}
+
+	function cameraButton() {
+                toggleView("camera");
+        }
+
+        function messageButton() {
+                toggleView("message_section");
+        }
+
+        function mapButton() {
+                toggleView("map");
+        }
+
+        function toggleView(elementId) {
+                var x = document.getElementById(elementId);
+                if (x.style.display === "none") {
+                        x.style.display = "block";
+                } else {
+                        x.style.display = "none";
+                }
+        }
+
+    </script>
+  </body>
+</html>
