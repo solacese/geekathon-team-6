@@ -63,11 +63,6 @@
 
 <script>
 
-var broker = "awsvmr01.chopper.mx";
-var brokerPort = 7910;
-var vpn = "AWSVPN";
-var clientusername = "solaceaws";
-var clientpassword = "solace@123";
 var myId;
 var isConnected = false;
 var currentCoords = google.maps.LatLng(0.0, 0.0);
@@ -582,7 +577,8 @@ const constraints = {
 
 	function connectMqtt() {
                 // Create a client instance
-                client = new Paho.MQTT.Client(broker, brokerPort, "");
+                //client = new Paho.MQTT.Client("dp55vmr1.chopper.mx", 8443, myId);
+                client = new Paho.MQTT.Client("dp55vmr1.chopper.mx", 8443, "");
 
                 // set callback handlers
                 client.onConnectionLost = onConnectionLost;
@@ -591,8 +587,8 @@ const constraints = {
                 client.connect({
 	    		onSuccess:onConnect,
 	    		useSSL:true, 
-	    		userName:clientusername, 
-	    		password:clientpassword});
+	    		userName:"default", 
+	    		password:"default"});
 	}
 
 	function disconnectMqtt() {
@@ -607,16 +603,16 @@ const constraints = {
 
 		// create session
         	try {
-	  		var myUrl = "wss://" + broker + ":443";
-	    		console.log("Connecting to: " + myUrl + " vpn: " + vpn +  " username: " + clientusername + " password: " + clientpassword);
+	  		var myUrl = "wss://dp55vmr1.chopper.mx:443";
+	  		var myDefault = "default";
             		jsSession = solace.SolclientFactory.createSession({
                 	// solace.SessionProperties
                 	url:      myUrl,
-                	vpnName:  vpn,
-                	userName: clientusername,
-                	password: clientpassword,
+                	vpnName:  myDefault,
+                	userName: myDefault,
+                	password: myDefault,
 			authenticationScheme: solace.AuthenticationScheme.BASIC,
-	    		connectRetries: 0,
+	    		connectRetreis: 0,
 	    		reconnectRetries: 0,
             		});
 
@@ -744,11 +740,7 @@ const constraints = {
                         platoon.numInfantry = json.numInfantry;
                         platoon.numTanks = json.numTanks;
 	 		platoon.numPlanes = json.numPlanes;
-	    		if(platoon.numInfantry == 0 && platoon.numTanks == 0 && platoon.numPlanes == 0) {
-	    			// Defeated
-	    		} else {
-				platoon.setLastUpdateTime();	
-	    		}
+			platoon.setLastUpdateTime();	
                 } else if(json.messageType == "PLATOON_MESSAGE") {
 			var platoon = platoons.get(json.id);
 			if(platoon != null) {
