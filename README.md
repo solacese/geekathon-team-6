@@ -14,39 +14,36 @@ The brokers were hosted in AWS, GCP and Azure. In addition, AWS Rekognition was 
 ### Solace PubSub+ features used
 List of PubSub+ features used ...
 
-DMR
-RDP
-MQTT/Websockets
+* DMR
+* RDP
+* MQTT/Websockets
 
 
 **Try the live demo in action here:
 
 
-### Other Useful Links
-List of links to useful resources ...
-
-
 ## Contents
 
-What does this repostiory contain ...
 
+This repository contains three subfolders:
+
+* rekognition: This folder contains the code for the Rekognition Lambda
+* mobile-app: This folder contains the code for the mobile/web app that the soldiers would use in the battlefield
+* dashboard-app: This folder contains the code for the dashboard that subscribes to the Solace PubSub+ Software broker hosted in Solace Cloud and displays the results of the Rekognition API
 
 ## Checking out
 
 To check out the project, clone this GitHub repository:
 
 ```
-git clone https://github.com/solacese/github-demo
-cd <github-demo>
+git clone https://github.com/solacese/geekathon-team-6
+cd geekathon-team-6
 ```
 
 ## Running the Demo
 
-To run the demo open:
+To run each component, navigate to the subfolder (mobile-app and dashboard-app) and follow the steps located there. The rekogonition lambda will have to be deployed in AWS for it to take affect
 
-```
-commands to run the demo go here ...
-```
 
 ## Contributing
 
@@ -54,7 +51,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 ## Authors
 
-See the list of [contributors](https://github.com/solacese/<github-repo>/graphs/contributors) who participated in this project.
+See the list of [contributors](https://github.com/solacese/geekathon-team-6/graphs/contributors) who participated in this project.
 
 ## License
 
