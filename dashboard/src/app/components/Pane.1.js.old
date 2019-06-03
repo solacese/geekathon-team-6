@@ -1,0 +1,97 @@
+//@flow
+
+import React, { Component, useState } from 'react';
+import { withStyles } from '@material-ui/core/styles'
+import Grid from '@material-ui/core/Grid'
+
+import {
+  CSSTransition,
+  TransitionGroup,
+} from 'react-transition-group';
+import uuid from 'uuid';
+import Button from '@material-ui/core/Button'
+
+// import { styled } from '@material-ui/styles';
+import styled from 'styled-components';
+
+
+// import './styles.css';
+
+
+const Div = styled.div`
+  margin: 2px;
+  height: 300;
+  width: 100;
+  border: 5px outset #9c27b0;
+  &:hover {
+   background-color: yellow;
+ }
+`;
+
+const Paragraph = styled.p`
+  font-size: 15px;
+  text-align: center;
+`;
+
+
+
+const styles = theme => {
+  // console.log('Theme', theme)
+  return(
+    {
+      root: {
+        flexGrow: 1,
+      },
+      paper: {
+        padding: theme.spacing.unit * 2,
+        textAlign: 'center',
+        // color: theme.palette.text.secondary,
+        color: theme.palette.primary.main,
+      },
+    }    
+  )
+}
+
+
+type Props = {
+    title: string,
+}
+class Pane extends Component<Props,State>{
+    render(){
+        console.log('render',this)
+        const { classes } = this.props;
+        let imageData = "data:image/jpeg;base64, " + this.props.fieldData.image
+        return(
+            //         <TransitionGroup className="todo-list">
+            // <CSSTransition
+            //   key={this.props.key}
+            //   timeout={5000}
+            //   classNames="item"
+            // >
+            <div>
+
+            <Button variant="contained" color="secondary" 
+              onClick={() => { console.log('onClick');}}>
+              Hello World {this.props.title}
+            </Button>
+
+            <img src={imageData} />
+<Div>
+    <Paragraph>Get started with styled-components 💅</Paragraph>
+  </Div>
+              </div>
+
+        //     </CSSTransition>
+
+        // </TransitionGroup>
+
+        )
+
+    }
+
+    
+}
+
+
+
+export default withStyles(styles)(Pane);

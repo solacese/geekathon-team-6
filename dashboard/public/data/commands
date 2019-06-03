@@ -1,0 +1,1 @@
+aws rekognition detect-text --image {"S3Object":{"Bucket":"images-rekognition17bc0332-eff4-4085-b142-8ef75cc67f0b","Name":"image-3.jpeg"}}
